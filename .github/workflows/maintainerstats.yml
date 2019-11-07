@@ -1,0 +1,25 @@
+name: initialstate-kpi-streamer
+on:
+  push:
+    branches:
+    - master
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout project
+        uses: actions/checkout@v1
+        with:
+          ref: master
+          fetch-depth: 1
+      - name: Set up Python 3.7 
+        uses: actions/setup-python@v1
+        with:
+          python-version: 3.7
+      - name: get-maintainer-stats
+        env:
+          GITHUB_TOKEN:    ${{ secrets.ACCESS_TOKEN }}
+          ISS_ACCESS_KEY:  ${{ secrets.ISS_ACCESS_KEY }}
+        run: |
+          pip install -r ./requirements.txt
+          python ./maintainer_stats.py -n "Tektronix Open Source :ambulance: Health Monitor :ambulance:" -b CW37LU8VCTQH -r initialstate-kpi-streamer --debug --small-terminal
