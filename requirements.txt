@@ -1,0 +1,5 @@
+requests==2.22.0
+ISStreamer==1.0.1
+pytz==2019.3
+PyGithub==1.44
+Columnar==1.1.0
