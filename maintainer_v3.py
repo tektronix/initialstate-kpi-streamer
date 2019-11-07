@@ -2,6 +2,7 @@ import datetime
 import json
 import requests
 from github import Github
+from pprint import pprint
 
 class Maintainer(object):
     """
@@ -28,7 +29,7 @@ class Maintainer(object):
         """
         contributors_count = repo.get_contributors().totalCount
         if self.debug:
-            print("get_contributor_count()")
+            print("get_contributor_count():")
             print(contributors_count)
 
         return contributors_count
@@ -41,8 +42,8 @@ class Maintainer(object):
         """
         contents = repo.get_clones_traffic(per="week")
         if self.debug:
-            print("get_clone_count()")
-            print(contents)
+            print("get_clone_count():")
+            pprint(contents)
 
         return contents['count'], contents['uniques']
 
@@ -54,7 +55,7 @@ class Maintainer(object):
         """
         forks_count = repo.forks_count
         if self.debug:
-            print("get_fork_count()")
+            print("get_fork_count():")
             print(forks_count)
 
         return forks_count
@@ -67,8 +68,8 @@ class Maintainer(object):
         """
         contents = repo.get_views_traffic(per="week")
         if self.debug:
-            print("get_views_count()")
-            print(contents)
+            print("\nget_views_count():")
+            pprint(contents)
 
         return contents['count'], contents['uniques']
 
@@ -81,8 +82,8 @@ class Maintainer(object):
         """
         contents = repo.get_top_referrers()
         if self.debug:
-            print("get_referrer_count()")
-            print(contents)
+            print("get_referrer_count():")
+            pprint(contents)
         total_dict, unique_dict = {}, {}
         for idx, ref in enumerate(contents):
             total_dict.update({ref.referrer : contents[idx].count})
@@ -135,3 +136,4 @@ class Maintainer(object):
         contributor_count = self.get_contributor_count(repo)
 
         return total_clones, unique_cloners, forks_count, contributor_count
+
