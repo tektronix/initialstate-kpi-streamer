@@ -146,8 +146,8 @@ class Maintainer(object):
         GraphQL query to retrieve:
         - Number of Open Issues
         - Number of Open Pull Requests
-        NOTE: Since number of Open Pull Requests has a conflicting state with 
-              merged and closed Pull Requests, a second query is in place to run separately 
+        NOTE: Since number of Open Pull Requests has a conflicting state with
+              merged and closed Pull Requests, a second query is in place to run separately
         GraphQL query2 to retrieve: 
         - Average PR Response Time
         """
@@ -196,6 +196,7 @@ class Maintainer(object):
             query($owner: String!, $name: String!) {
                 repository(owner: $owner, name: $name) {
                     pullRequests(last: 5) {
+                        totalCount
                         pageInfo {
                             startCursor
                             hasPreviousPage
@@ -258,50 +259,54 @@ class Maintainer(object):
         pr_create = time_origin
         pr_end = time_origin
 
-        # Each PR object has a number of Events: https://developer.github.com/v4/object/pullrequest/
-        # Current iteration for this statistic is simply the mean average time between:
-        #     Supported Pull Request Start Events:
-        #         PR Review Requested
-        #         PR Marked Ready for Review
-        #         PR Reopened
-        #      Supported Pull Request End Events:
-        #         PR Merged
-        #         PR Declined
-        #
-        # Other supported events can be added in the future, e.g. Issue Comments, Changes Requested or new Commits..
-        # Timeline Nodes will have to be added to query2 in order to have this data
-        # see https://developer.github.com/v4/union/pullrequesttimelineitem/
+        if pull_requests['totalCount'] > 0:
+            # Each PR object has a number of Events: https://developer.github.com/v4/object/pullrequest/
+            # Current iteration for this statistic is simply the mean average time between:
+            #     Supported Pull Request Start Events:
+            #         PR Review Requested
+            #         PR Marked Ready for Review
+            #         PR Reopened
+            #      Supported Pull Request End Events:
+            #         PR Merged
+            #         PR Declined
+            #
+            # Other supported events can be added in the future, e.g. Issue Comments, Changes Requested or new Commits..
+            # Timeline Nodes will have to be added to query2 in order to have this data
+            # see https://developer.github.com/v4/union/pullrequesttimelineitem/
 
-        #  For each pull request fetched
-        for node in range(len(all_nodes)):
-            # For each event in the pull request's timeline items
-            for item in pull_requests['nodes'][node]['timelineItems']['nodes']:
-                # Filter through each supported Start/End Event condition and assign start/end times
-                typename = item['__typename']
-                if typename == 'ReviewRequestedEvent':
-                    # PR was created and review was requested
-                    pr_create = datetime.datetime.strptime(item['createdAt'], "%Y-%m-%dT%H:%M:%SZ")
-                if typename == 'ReopenedEvent':
-                    # Override the pr_create string if submitter reopens PR
-                    pr_create = datetime.datetime.strptime(item['createdAt'], "%Y-%m-%dT%H:%M:%SZ")
-                if typename == 'ReadyForReviewEvent':
-                    # Override both previous cases if submitter marks the PR as ready for review
-                    # (Start the clock!) 
-                    pr_create = datetime.datetime.strptime(item['createdAt'], "%Y-%m-%dT%H:%M:%SZ")
-                if typename == 'MergedEvent':
-                    pr_end = datetime.datetime.strptime(item['createdAt'], "%Y-%m-%dT%H:%M:%SZ")
-                if typename == 'ReviewDismissedEvent':
-                    # Override the pr_end string if maintainer dismisses the PR
-                    pr_end = datetime.datetime.strptime(item['createdAt'], "%Y-%m-%dT%H:%M:%SZ")
-            # If PR was not insta-merged, add time diff to the list for mean calculation
-            if time_origin not in (pr_create, pr_end):
-                # Transform datetime object into a usable format for calculating a mean
-                # diff time string format: 2019-10-24T03:29:08Z
-                diff = pr_end - pr_create
-                # divide by 86400 for days, 3600 for hours
-                all_times.append(diff.total_seconds()/86400)
-        # And finally calculate the mean PR resolution times from the list.
-        total_average_time_for_pr = round(statistics.mean(all_times), 2)
+            #  For each pull request fetched 
+            for node in range(len(all_nodes)):
+                # For each event in the pull request's timeline items
+                for item in pull_requests['nodes'][node]['timelineItems']['nodes']:
+                    # Filter through each supported Start/End Event condition and assign start/end times
+                    typename = item['__typename']
+                    if typename == 'ReviewRequestedEvent':
+                        # PR was created and review was requested
+                        pr_create = datetime.datetime.strptime(item['createdAt'], "%Y-%m-%dT%H:%M:%SZ")
+                    if typename == 'ReopenedEvent':
+                        # Override the pr_create string if submitter reopens PR
+                        pr_create = datetime.datetime.strptime(item['createdAt'], "%Y-%m-%dT%H:%M:%SZ")
+                    if typename == 'ReadyForReviewEvent':
+                        # Override both previous cases if submitter marks the PR as ready for review
+                        # (Start the clock!)
+                        pr_create = datetime.datetime.strptime(item['createdAt'], "%Y-%m-%dT%H:%M:%SZ")
+                    if typename == 'MergedEvent':
+                        pr_end = datetime.datetime.strptime(item['createdAt'], "%Y-%m-%dT%H:%M:%SZ")
+                    if typename == 'ReviewDismissedEvent':
+                        # Override the pr_end string if maintainer dismisses the PR
+                        pr_end = datetime.datetime.strptime(item['createdAt'], "%Y-%m-%dT%H:%M:%SZ")
+                # If PR was not insta-merged, add time diff to the list for mean calculation
+                if time_origin not in (pr_create, pr_end):
+                    # Transform datetime object into a usable format for calculating a mean
+                    # diff time string format: 2019-10-24T03:29:08Z
+                    diff = pr_end - pr_create
+                    # divide by 86400 for days, 3600 for hours
+                    all_times.append(diff.total_seconds()/86400)
+            # And finally calculate the mean PR resolution times from the list.
+            total_average_time_for_pr = round(statistics.mean(all_times), 2)
+        else:
+            # Handle case for when no pull requests have been opened yet..
+            total_average_time_for_pr = 0
 
         return total_open_issues, total_open_pull_reqs, total_average_time_for_pr
 
