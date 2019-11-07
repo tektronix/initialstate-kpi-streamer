@@ -31,37 +31,40 @@ def process_arguments():
     parser = argparse.ArgumentParser(description='Maintainer stats utility')
 
     # required arguments
-    parser.add_argument('-o', '--org',
+    parser.add_argument('-o ', '--org ',
                         action='store', dest='gh_org', default='tektronix',
                         help='GitHub Enterprise org URL (default: tektronix)')
 
-    parser.add_argument('-u', '--user',
+    parser.add_argument('-u ', '--user ',
                         action='store', dest='gh_user', default='tektronix',
                         help='GitHub user')
 
-    parser.add_argument('-r', '--repo',
-                        nargs='+', dest='gh_repos',
+    parser.add_argument('-r ', '--repo ',
+                        nargs='+', dest='gh_repos', 
                         help='specific repo or list of repos (e.g. tpinux (default: <none>)')
 
-    parser.add_argument('-t', '--token',
+    parser.add_argument('-t ', '--token',
                         action='store', dest='gh_token', default=os.environ.get('GITHUB_TOKEN', None),
                         help='GitHub API token (or env var GITHUB_TOKEN) (default: environment variable)')
 
-    parser.add_argument('-n' '--ISSBName',
+    parser.add_argument('-n ' '--ISSBName ',
                         action='store', dest='iss_name', default=os.environ.get('ISS_BUCKET_NAME', None),
                         help='Initial State Stream Bucket Name (or env var ISS_BUCKET_NAME) (default: <none>')
 
-    parser.add_argument('-b' '--ISSBKey',
+    parser.add_argument('-b ' '--ISSBKey ',
                         action='store', dest='iss_bucket_key', default=os.environ.get('ISS_BUCKET_KEY', None),
                         help='Initial State Stream Bucket Key (or env var ISS_BUCKET_KEY) (default: <none>')
 
-    parser.add_argument('-i' '--ISSKey',
+    parser.add_argument('-i ' '--ISSKey ',
                         action='store', dest='iss_key', default=os.environ.get('ISS_ACCESS_KEY', None),
                         help='Initial State Stream Access Key (or env var ISS_ACCESS_KEY) (default: <none>')
 
-    parser.add_argument('-d', '--debug',
+    parser.add_argument('-d ', '--debug ',
                         action='store_true', dest='debug',
                         help='enable debug logging (default: false)')
+
+    parser.add_argument('-s','--small-terminal', action='store_true', dest='small_terminal',
+                        help='disallow columnar from reporting for small terminals (e.g. Github actions)')
 
     return parser.parse_args()
 
@@ -71,7 +74,7 @@ if __name__ is '__main__':
 
     # Initialize Maintainer GraphQL APIv4 class
     mtr4 = maintainer_v4.Maintainer(args)
-    # Initialize Maintainer REST APIv3 class 
+    # Initialize Maintainer REST APIv3 class
     mtr3 = maintainer_v3.Maintainer(args)
 
     # Populate local variables
@@ -80,10 +83,10 @@ if __name__ is '__main__':
     iss_bucket_key = args.iss_bucket_key
     iss_key = args.iss_key
 
-    # Initial State the Initial State Streamer class 
+    # Initial State the Initial State Streamer class
     if None not in (iss_key, iss_bucket_name, iss_bucket_key):
         streamer = Streamer(bucket_name=iss_bucket_name, bucket_key=iss_bucket_key, access_key=iss_key)
-    else: 
+    else:
         if args.debug:
             print('!!! Initial State Streamer not initialized!!!!')
             print('Bucket Name {0}, Bucket Key {1}, Access Key {2}'.format(iss_bucket_name, iss_bucket_key, iss_key))
@@ -91,7 +94,7 @@ if __name__ is '__main__':
      # Prep the std out report columns
     report_data = []
     headers = ['repository', 'total views', 'unique views', 'total clones', 'unique clones', 'total stars', 'total forks',
-                'contributors','total commits', '# Days since Commit', 'open issues', 'open PRs', 'Avg PR Response Time']
+                'contributors','total commits', '# Days since Commit', 'open issues', 'open PRs', 'Avg PR Response Time(days)']
 
      # Go Forth, retrieve the data from GitHub API spigots
     for repo in repo_list:
@@ -105,6 +108,8 @@ if __name__ is '__main__':
         commits, time_since_last = mtr4.get_retention_metrics()
         # Disparate Project Health Metrics (NOTE: GitHub APIv4)
         total_open_issues, total_open_pull_reqs, total_average_time_for_pr = mtr4.get_project_health_metrics()
+        # Rate Limit Left
+        remaining_rate_limit, resetAt_rate_limit = mtr4.get_rate_limit()
 
         # Populate Report Data
         repo_data = [repo, total_views, unique_views, total_clones, unique_cloners, total_stars, forks_count,
@@ -166,6 +171,7 @@ if __name__ is '__main__':
         # Stream the ISS Project Health Signals
         streamer.log(iss_total_issues, total_open_issues)
         streamer.log(iss_total_prs, total_open_pull_reqs)
+        streamer.log(iss_pr_resolution_time, total_average_time_for_pr)
         print("!!", end="\t", flush=True)
         streamer.flush()
         print("[DONE]")
@@ -174,5 +180,9 @@ if __name__ is '__main__':
         streamer.close()
 
     # Report the results to std out with columnar
-    table=columnar(report_data, headers, row_sep='-', no_borders=True, justify=['l','c','c','c','c','c','c','c','c','c','c','c','c','c'])
-    print(table)
+    if not args.small_terminal:
+        table=columnar(report_data, headers, row_sep='-', no_borders=True, justify=['l','c','c','c','c','c','c','c','c','c','c','c','c','c'])
+        print(table)
+
+    print(f"Rate Limit remaining: {remaining_rate_limit}, will reset in ~{resetAt_rate_limit}min")
+
