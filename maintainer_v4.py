@@ -25,7 +25,6 @@ class Maintainer(object):
         self.token = args.gh_token
         self.org = args.gh_org
 
-
     def run_query(self, query, vars=None):
         """
         Establish connection with GitHub and return requested results
@@ -61,8 +60,12 @@ class Maintainer(object):
             print("get_rate_limit(): ")
             pprint(result)
         rate_limit = result['data']['rateLimit']['remaining']
+        resetsAt = result['data']['rateLimit']['resetAt']
+        time_soon = datetime.datetime.strptime(resetsAt, "%Y-%m-%dT%H:%M:%SZ")
+        time_now = datetime.datetime.utcnow()
+        rate_limit_reset = str(round((time_soon - time_now).total_seconds()/60))
 
-        print("Current Rate Limit: {}".format(rate_limit))
+        return rate_limit, rate_limit_reset
 
     def get_discovery_metrics(self):
         """
@@ -72,8 +75,6 @@ class Maintainer(object):
         - Referring Sites       <see maintainer_v3.py>
         - Number of Github Stars
         """
-        # TRAFFIC METRICS NOT YET IMPLEMENTED IN APIv4
-        # SEE <> FOR MORE DETAILS
 
     def get_usage_metrics(self):
         """
@@ -93,21 +94,18 @@ class Maintainer(object):
         query = """
             query($owner: String!, $name: String!) {
                 repository(owner: $owner, name: $name) {
-                    object(expression:"master") {
-                        ... on Commit {
-                            history {
-                                totalCount
-                            }
-                        }
-                    }
-                    ref(qualifiedName: "master") {
+                    defaultBranchRef {
                         target {
-                        ... on Commit {
-                            history (first:1) {
-                                edges {
-                                    node {
-                                        commitUrl
-                                        committedDate
+                            ... on Commit {
+                                history (first:1) {
+                                    totalCount
+                                    edges {
+                                        node {
+                                            ... on Commit {
+                                                commitUrl
+                                                committedDate
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -115,7 +113,7 @@ class Maintainer(object):
                     }
                 }
             }
-        }
+
         """
         variables = {
             "owner": self.org,
@@ -129,8 +127,8 @@ class Maintainer(object):
             pprint(result)
 
         # EXTRACT
-        total_commit_count = str(result['data']['repository']['object']['history']['totalCount'])
-        committedDate = str(result['data']['repository']['ref']['target']['history']['edges'][0]['node']['committedDate'])
+        total_commit_count = str(result['data']['repository']['defaultBranchRef']['target']['history']['totalCount'])
+        committedDate = str(result['data']['repository']['defaultBranchRef']['target']['history']['edges'][0]['node']['committedDate'])
 
         # TRANSFORM
         # parse commit date into datetime object and calculate the diff.
@@ -189,7 +187,7 @@ class Maintainer(object):
             pprint(result)
         total_open_issues = result['data']['repository']['issues']['totalCount']
         total_open_pull_reqs = result['data']['repository']['pullRequests']['totalCount']
-        
+
         # Since we now need the data for pullRequest webhooks in the reverse order, we need to query again with different parameters 
         # ERROR: 'message': 'Field \'pullRequests\' has an argument conflict: {first:"100",states:"OPEN"} or {last:"100"}?'}]}
         #
@@ -251,7 +249,7 @@ class Maintainer(object):
         if self.debug:
             pprint(result2)
 
-        # TRANSFORM 
+        # TRANSFORM
         all_nodes = []
         all_times = []
         time_origin = datetime.datetime(1, 1, 1, 0, 0)
@@ -259,22 +257,22 @@ class Maintainer(object):
         all_nodes.extend(pull_requests['nodes'])
         pr_create = time_origin
         pr_end = time_origin
-        
+
         # Each PR object has a number of Events: https://developer.github.com/v4/object/pullrequest/
-        # Current iteration for this statistic is simply the mean average time between: 
-        #     Supported Pull Request Start Events: 
-        #         PR Review Requested 
+        # Current iteration for this statistic is simply the mean average time between:
+        #     Supported Pull Request Start Events:
+        #         PR Review Requested
         #         PR Marked Ready for Review
         #         PR Reopened
         #      Supported Pull Request End Events:
-        #         PR Merged 
+        #         PR Merged
         #         PR Declined
-        # 
+        #
         # Other supported events can be added in the future, e.g. Issue Comments, Changes Requested or new Commits..
-        # Timeline Nodes will have to be added to query2 in order to have this data 
+        # Timeline Nodes will have to be added to query2 in order to have this data
         # see https://developer.github.com/v4/union/pullrequesttimelineitem/
-        
-        #  For each pull request fetched 
+
+        #  For each pull request fetched
         for node in range(len(all_nodes)):
             # For each event in the pull request's timeline items
             for item in pull_requests['nodes'][node]['timelineItems']['nodes']:
@@ -284,7 +282,7 @@ class Maintainer(object):
                     # PR was created and review was requested
                     pr_create = datetime.datetime.strptime(item['createdAt'], "%Y-%m-%dT%H:%M:%SZ")
                 if typename == 'ReopenedEvent':
-                    # Override the pr_create string if submitter reopens PR 
+                    # Override the pr_create string if submitter reopens PR
                     pr_create = datetime.datetime.strptime(item['createdAt'], "%Y-%m-%dT%H:%M:%SZ")
                 if typename == 'ReadyForReviewEvent':
                     # Override both previous cases if submitter marks the PR as ready for review
@@ -293,7 +291,7 @@ class Maintainer(object):
                 if typename == 'MergedEvent':
                     pr_end = datetime.datetime.strptime(item['createdAt'], "%Y-%m-%dT%H:%M:%SZ")
                 if typename == 'ReviewDismissedEvent':
-                    # Override the pr_end string if maintainer dismisses the PR 
+                    # Override the pr_end string if maintainer dismisses the PR
                     pr_end = datetime.datetime.strptime(item['createdAt'], "%Y-%m-%dT%H:%M:%SZ")
             # If PR was not insta-merged, add time diff to the list for mean calculation
             if time_origin not in (pr_create, pr_end):
@@ -302,7 +300,7 @@ class Maintainer(object):
                 diff = pr_end - pr_create
                 # divide by 86400 for days, 3600 for hours
                 all_times.append(diff.total_seconds()/86400)
-        # And finally calculate the mean PR resolution times from the list. 
+        # And finally calculate the mean PR resolution times from the list.
         total_average_time_for_pr = round(statistics.mean(all_times), 2)
 
         return total_open_issues, total_open_pull_reqs, total_average_time_for_pr
@@ -318,3 +316,4 @@ class Maintainer(object):
         https://github.com/tektronix/OSO-Tools-and-Automation/issues/27
 
         """
+
