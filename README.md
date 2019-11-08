@@ -86,7 +86,8 @@ Who is getting use from the project(s)?
 	
 	APIv3: `GET /repos/:owner/:repo/traffic/clones`  
 	Returns two values, representing total and unique clones (per week); duration can be specified in `maintainer_v3.py`  
-	
+	NOTE: per week does actually mean the 'Last 14 days'  
+	  
 	Example return:  
 	```
 	get_clone_count():
@@ -102,7 +103,8 @@ Who is getting use from the project(s)?
 	
 	APIv3: `GET /repos/:owner/:repo/traffic/clones`  
 	Returns two values, representing total and unique clones (per week); duration can be specified in `maintainer_v3.py`  
-	
+	NOTE: per week does actually mean the 'Last 14 days'  
+	  	
 	Example return:  
 	```
 	get_clone_count():
