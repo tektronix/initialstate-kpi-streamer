@@ -11,6 +11,7 @@
  + [Initial State Setup](#initialstate)
  + [Example Finished Dashboard](#example)
  + [Program Usage](#usage)
+ + [Maintainer](#maintainer)
  + [Supporting Links](#links)
 
 ## About <a name="about"></a>
@@ -413,7 +414,8 @@ optional arguments:
   -d , --debug          enable debug logging 
                         (default: false)
 ```
-
+## Maintainer
+(Nick Lynch-Jonely)[https://github.com/nlynchjo]  
 
 ## Supporting Links<a name="links"></a>
 [GitHub's GraphQL API v4 developer page](https://developer.github.com/v4/)  
