@@ -415,7 +415,7 @@ optional arguments:
                         (default: false)
 ```
 ## Maintainer
-(Nick Lynch-Jonely)[https://github.com/nlynchjo]  
+[Nick Lynch-Jonely](https://github.com/nlynchjo)  
 
 ## Supporting Links<a name="links"></a>
 [GitHub's GraphQL API v4 developer page](https://developer.github.com/v4/)  
