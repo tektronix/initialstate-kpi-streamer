@@ -18,16 +18,62 @@ Current Metrics this query engine supports:
 Are people able to find my project(s)?  
 * Rationale: We are interested in understanding the impact of activities on user engagement (blog posts, conference meetups, etc.) e.g. Was my Medium article successful in directing new potential users to my project?  
   <details><summary><b>Total Page Views</b></summary>
-	
+  
+  APIv3: `GET /repos/:owner/:repo/traffic/views`  
+  Returns two values, representing total and unique page views (per week); duration can be specified in `maintainer_v3.py`  
+  
+  Example return:
+  ```
+  get_views_count():
+  {'count': 213,
+   'uniques': 10,
+   'views': [View(uniques=3, timestamp=2019-10-21 00:00:00, count=57),
+             View(uniques=6, timestamp=2019-10-28 00:00:00, count=131),
+             View(uniques=8, timestamp=2019-11-04 00:00:00, count=25)]
+  }
+  ```
+  
   </details>
   <details><summary><b>Total unique visitors</b></summary>
-	
+  
+  APIv3: `GET /repos/:owner/:repo/traffic/views`  
+  Returns two values, representing total and unique page views (per week); duration can be specified in `maintainer_v3.py`  
+  
+  Example return:
+  ```
+  get_views_count():
+  {'count': 213,
+   'uniques': 10,
+   'views': [View(uniques=3, timestamp=2019-10-21 00:00:00, count=57),
+             View(uniques=6, timestamp=2019-10-28 00:00:00, count=131),
+             View(uniques=8, timestamp=2019-11-04 00:00:00, count=25)]
+  }  
+  ```
+  
   </details>
   <details><summary><b>Referring Sites</b></summary>
-	
+ 
+   APIv3: `GET /repos/:owner/:repo/traffic/popular/referrer`
+   Returns two separate dictionaries, `{site:totalcount}` & `{site:uniquecount}`, for referring sites (key) and total/unique visitors (values)
+  
+  Example return:
+  ```
+   get_referrer_count():
+   [Referrer(uniques=7, referrer="github.com", count=52),
+   Referrer(uniques=2, referrer="login.microsoftonline.com", count=4),
+   Referrer(uniques=1, referrer="cla-assistant.io", count=1)]
+  ```
+  
   </details>
   <details><summary><b>GitHub Stars</b></summary>
-	
+
+  APIv3: `GET /repos/:owner/:repo/stargazers`
+  Returns single value representing current total number of stars on project.
+  
+  Example return:
+  ```
+  Total # of stars for <project>: 42
+  ```
   </details>
 
 #### Usage
