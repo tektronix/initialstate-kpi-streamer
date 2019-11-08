@@ -9,6 +9,7 @@
  + [About](#about)
  + [Installation](#installation)
  + [Initial State Setup](#initialstate)
+ + [Example Finished Dashboard](#example)
  + [Program Usage](#usage)
  + [Supporting Links](#links)
 
@@ -330,7 +331,7 @@ The results of each query can be streamed as unique signals to be displayed in t
 
 Sign up for an account on their webpage and create a new Stream Bucket...
 
-![createdash](./assets/ISS_createnew1.png)
+![createdash](./assets/ISS_createnew1.png)  
 Once created,  your new dashboard will need some data!
 
 You'll need to manually extract a few things from your Dashboard Settings Page...
@@ -363,8 +364,9 @@ And Behold, you can now begin formatting your dashboard to your hearts content u
 Check out the Initial State documentation for more information on all the cool things you can do. 
 * [Initial State: Customize Your Tiles Dashboard](https://support.initialstate.com/hc/en-us/articles/360003879391-2-Customize-Your-Tiles-Dashboard)
 
-Example Dashboard using the data collected from these stats:
+## Example Finished Dashboard using the data collected from these stats on a real project: <a name="example"></a>
 
+![Example Dashboard](./assets/ISS_examplefinisheddash.png)
 
 ## Usage<a name="usage"></a>
 ```
