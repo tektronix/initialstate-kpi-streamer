@@ -39,6 +39,10 @@ def process_arguments():
                         action='store', dest='gh_user', default='tektronix',
                         help='GitHub user')
 
+    parser.add_argument('-br ', '--branch ',
+                        action='store', dest='gh_branch',
+                        help='branch target')
+
     parser.add_argument('-r ', '--repo ',
                         nargs='+', dest='gh_repos', 
                         help='specific repo or list of repos (e.g. tpinux (default: <none>)')
