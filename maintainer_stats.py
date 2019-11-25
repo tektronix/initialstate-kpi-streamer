@@ -39,7 +39,7 @@ def process_arguments():
                         action='store', dest='gh_user', default='tektronix',
                         help='GitHub user')
 
-    parser.add_argument('-br ', '--branch ',
+    parser.add_argument('-b', '--branch ',
                         action='store', dest='gh_branch',
                         help='branch target')
 
@@ -55,7 +55,7 @@ def process_arguments():
                         action='store', dest='iss_name', default=os.environ.get('ISS_BUCKET_NAME', None),
                         help='Initial State Stream Bucket Name (or env var ISS_BUCKET_NAME) (default: <none>')
 
-    parser.add_argument('-b ' '--ISSBKey ',
+    parser.add_argument('-k ' '--ISSBKey ',
                         action='store', dest='iss_bucket_key', default=os.environ.get('ISS_BUCKET_KEY', None),
                         help='Initial State Stream Bucket Key (or env var ISS_BUCKET_KEY) (default: <none>')
 

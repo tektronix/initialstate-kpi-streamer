@@ -370,10 +370,10 @@ Check out the Initial State documentation for more information on all the cool t
 
 ## Usage<a name="usage"></a>
 ```
-usage: maintainer_stats.py [-h] [-o  GH_ORG] [-u  GH_USER]
+usage: maintainer_stats.py [-h] [-o  GH_ORG] [-u  GH_USER] [-b BRANCH_NAME]
                            [-r  REPO_NAME [REPO_NAME ...]] [-t  GH_TOKEN]
                            [-n --ISSBName  ISS_NAME]
-                           [-b --ISSBKey  ISS_BUCKET_KEY]
+                           [-k --ISSBKey  ISS_BUCKET_KEY]
                            [-i --ISSKey  ISS_KEY] [-d]
 
 Maintainer stats utility
@@ -397,12 +397,20 @@ optional arguments:
                         GitHub user    
                         (default: <none>)
 
+  -b --branch  BRANCH_NAME
+                        Target branch ref for Retention Metrics
+                        NOTE: If branch is specifed, and multiple repos
+                        are targetted, make sure the branch name exists 
+                        on all remotes. If this argument is omitted, 
+                        defaultRefBranch is used for all repos
+                        (default: <none>)
+
   -n --ISSBName  ISS_NAME
                         Initial State Stream Bucket Name 
                         (or env var ISS_BUCKET_NAME) 
                         (default: <none>)
 
-  -b --ISSBKey  ISS_BUCKET_KEY
+  -k --ISSBKey  ISS_BUCKET_KEY
                         Initial State Stream Bucket Key 
                         (or env var ISS_BUCKET_KEY) 
                         (default: <none>)
