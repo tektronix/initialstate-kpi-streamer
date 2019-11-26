@@ -23,6 +23,7 @@ class Maintainer(object):
         self.user = args.gh_user
         self.repo = args.gh_repos
         self.token = args.gh_token
+        self.branch = args.gh_branch
         self.org = args.gh_org
 
     def run_query(self, query, vars=None):
@@ -91,16 +92,44 @@ class Maintainer(object):
         - Number of commits
         - Days since last commit
         """
-        query = """
-            query($owner: String!, $name: String!) {
-                repository(owner: $owner, name: $name) {
-                    defaultBranchRef {
-                        target {
+        if not self.branch:
+            query = """
+                query($owner: String!, $name: String!) {
+                    repository(owner: $owner, name: $name) {
+                        defaultBranchRef { 
+                            target {
+                                ... on Commit {
+                                    history (first:1) {
+                                        totalCount
+                                        edges {
+                                            node {
+                                                ... on Commit {
+                                                    commitUrl
+                                                    committedDate
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            """
+            variables = {
+                "owner": self.org,
+                "name": self.repo
+            }
+        else: 
+            query = """
+                query($owner: String!, $name: String!, $branch: String!) {
+                    repository(owner: $owner, name: $name) {
+                        object(expression: $branch) {
                             ... on Commit {
                                 history (first:1) {
                                     totalCount
                                     edges {
-                                        node {
+                                        node{
                                             ... on Commit {
                                                 commitUrl
                                                 committedDate
@@ -112,23 +141,28 @@ class Maintainer(object):
                         }
                     }
                 }
+            """
+            variables = {
+                "owner": self.org,
+                "name": self.repo,
+                "branch": self.branch
             }
-
-        """
-        variables = {
-            "owner": self.org,
-            "name": self.repo
-        }
 
         # ACQUIRE
         result = self.run_query(query, variables)
+
         if self.debug:
             print("get_retention_metrics(): ")
             pprint(result)
 
         # EXTRACT
-        total_commit_count = str(result['data']['repository']['defaultBranchRef']['target']['history']['totalCount'])
-        committedDate = str(result['data']['repository']['defaultBranchRef']['target']['history']['edges'][0]['node']['committedDate'])
+        total_commit_count, committedDate = 0,0
+        if not self.branch:
+            total_commit_count = str(result['data']['repository']['defaultBranchRef']['target']['history']['totalCount'])
+            committedDate = str(result['data']['repository']['defaultBranchRef']['target']['history']['edges'][0]['node']['committedDate'])
+        else: 
+            total_commit_count = str(result['data']['repository']['object']['history']['totalCount'])
+            committedDate = str(result['data']['repository']['object']['history']['edges'][0]['node']['committedDate'])
 
         # TRANSFORM
         # parse commit date into datetime object and calculate the diff.
@@ -146,8 +180,8 @@ class Maintainer(object):
         GraphQL query to retrieve:
         - Number of Open Issues
         - Number of Open Pull Requests
-        NOTE: Since number of Open Pull Requests has a conflicting state with
-              merged and closed Pull Requests, a second query is in place to run separately
+        NOTE: Since number of Open Pull Requests has a conflicting state with 
+              merged and closed Pull Requests, a second query is in place to run separately 
         GraphQL query2 to retrieve: 
         - Average PR Response Time
         """
@@ -187,7 +221,7 @@ class Maintainer(object):
             pprint(result)
         total_open_issues = result['data']['repository']['issues']['totalCount']
         total_open_pull_reqs = result['data']['repository']['pullRequests']['totalCount']
-
+        
         # Since we now need the data for pullRequest webhooks in the reverse order, we need to query again with different parameters 
         # ERROR: 'message': 'Field \'pullRequests\' has an argument conflict: {first:"100",states:"OPEN"} or {last:"100"}?'}]}
         #
@@ -250,29 +284,38 @@ class Maintainer(object):
         if self.debug:
             pprint(result2)
 
-        # TRANSFORM
+        # TRANSFORM 
         all_nodes = []
+        open_nodes = []
         all_times = []
         time_origin = datetime.datetime(1, 1, 1, 0, 0)
+        open_prs = result['data']['repository']['pullRequests']['nodes']
         pull_requests = result2['data']['repository']['pullRequests']
         all_nodes.extend(pull_requests['nodes'])
         pr_create = time_origin
         pr_end = time_origin
-
-        if pull_requests['totalCount'] > 0:
+        
+        if pull_requests['totalCount'] > 0: 
             # Each PR object has a number of Events: https://developer.github.com/v4/object/pullrequest/
-            # Current iteration for this statistic is simply the mean average time between:
-            #     Supported Pull Request Start Events:
-            #         PR Review Requested
+            # Current iteration for this statistic is simply the mean average time between: 
+            #     Supported Pull Request Start Events: 
+            #         PR Review Requested 
             #         PR Marked Ready for Review
             #         PR Reopened
             #      Supported Pull Request End Events:
-            #         PR Merged
+            #         PR Merged 
             #         PR Declined
-            #
+            # 
             # Other supported events can be added in the future, e.g. Issue Comments, Changes Requested or new Commits..
-            # Timeline Nodes will have to be added to query2 in order to have this data
+            # Timeline Nodes will have to be added to query2 in order to have this data 
             # see https://developer.github.com/v4/union/pullrequesttimelineitem/
+        
+            # Parse through currently open PRs
+            for node in range(len(open_prs)):
+                open_pr_start = datetime.datetime.strptime(open_prs[node]['createdAt'], "%Y-%m-%dT%H:%M:%SZ")
+                open_pr_time_now = datetime.datetime.utcnow()
+                open_diff = open_pr_time_now - open_pr_start
+                all_times.append(open_diff.total_seconds()/86400)
 
             #  For each pull request fetched 
             for node in range(len(all_nodes)):
@@ -284,29 +327,39 @@ class Maintainer(object):
                         # PR was created and review was requested
                         pr_create = datetime.datetime.strptime(item['createdAt'], "%Y-%m-%dT%H:%M:%SZ")
                     if typename == 'ReopenedEvent':
-                        # Override the pr_create string if submitter reopens PR
+                        # Override the pr_create string if submitter reopens PR 
                         pr_create = datetime.datetime.strptime(item['createdAt'], "%Y-%m-%dT%H:%M:%SZ")
                     if typename == 'ReadyForReviewEvent':
                         # Override both previous cases if submitter marks the PR as ready for review
-                        # (Start the clock!)
+                        # (Start the clock!) 
                         pr_create = datetime.datetime.strptime(item['createdAt'], "%Y-%m-%dT%H:%M:%SZ")
                     if typename == 'MergedEvent':
                         pr_end = datetime.datetime.strptime(item['createdAt'], "%Y-%m-%dT%H:%M:%SZ")
                     if typename == 'ReviewDismissedEvent':
-                        # Override the pr_end string if maintainer dismisses the PR
+                        # Override the pr_end string if maintainer dismisses the PR 
                         pr_end = datetime.datetime.strptime(item['createdAt'], "%Y-%m-%dT%H:%M:%SZ")
                 # If PR was not insta-merged, add time diff to the list for mean calculation
                 if time_origin not in (pr_create, pr_end):
                     # Transform datetime object into a usable format for calculating a mean
                     # diff time string format: 2019-10-24T03:29:08Z
-                    diff = pr_end - pr_create
-                    # divide by 86400 for days, 3600 for hours
-                    all_times.append(diff.total_seconds()/86400)
-            # And finally calculate the mean PR resolution times from the list.
+                    if 0 == pr_create or 0 == pr_end:
+                        diff = 0
+                    else:
+                        diff = pr_end - pr_create
+
+                        # divide by 86400 for days, 3600 for hours
+                        diff = diff.total_seconds()/86400
+                    if diff >= 0: 
+                        all_times.append(diff)
+                    else: 
+                        all_times.append(0)
+            # And finally calculate the mean PR resolution times from the list. 
+            if self.debug:
+                print(f"all_times: {all_times}")
             total_average_time_for_pr = round(statistics.mean(all_times), 2)
         else:
             # Handle case for when no pull requests have been opened yet..
-            total_average_time_for_pr = 0
+            total_average_time_for_pr = 0 
 
         return total_open_issues, total_open_pull_reqs, total_average_time_for_pr
 
@@ -321,4 +374,3 @@ class Maintainer(object):
         https://github.com/tektronix/OSO-Tools-and-Automation/issues/27
 
         """
-
