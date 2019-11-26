@@ -1,5 +1,6 @@
 # Maintainer stats collector 
 [![Tektronix](https://tektronix.github.io/media/TEK-opensource_badge.svg)](https://github.com/tektronix)
+[![CodeFactor](https://www.codefactor.io/repository/github/tektronix/initialstate-kpi-streamer/badge)](https://www.codefactor.io/repository/github/tektronix/initialstate-kpi-streamer)
 
  Python Utility for collecting repo statistics from GitHub and streaming results to an [Initial State Dashboard](https://www.initialstate.com/)  
 
