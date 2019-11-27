@@ -3,6 +3,8 @@
 [![CodeFactor](https://www.codefactor.io/repository/github/tektronix/initialstate-kpi-streamer/badge)](https://www.codefactor.io/repository/github/tektronix/initialstate-kpi-streamer)
 
  Python Utility for collecting repo statistics from GitHub and streaming results to an [Initial State Dashboard](https://www.initialstate.com/)  
+ 
+ Example: https://go.init.st/0sjumwe  
 
  NOTE: Currently, both API v3 and API v4 are in use for this project. Ideally, API v4 would be exclusively used, but until the schema is complete, some metrics are unavailable and instead use PyGithub for API v3 access.
 
